@@ -81,11 +81,14 @@ export function buildGarageScene(rng, state) {
   scene.background = new THREE.Color(0x1a1410);
   const camera = new THREE.PerspectiveCamera(50, 1280 / 720, 0.1, 60);
   camera.position.set(0, 2.4, 10.5);
-  camera.lookAt(0, 1.4, 0);
+  // Look slightly right of the room's centre so the sign, the car and the
+  // mechanic all sit in the LEFT half of the frame — the DOM shop panel covers
+  // the right 46%, and v21's sign died behind it ("DIE'S GARA").
+  camera.lookAt(2.2, 1.4, 0);
 
   // Floor with painted markings + oil stains.
   const floorTex = canvasTexture(512, 512, (ctx, w, h) => {
-    ctx.fillStyle = '#4a4642';
+    ctx.fillStyle = '#5a5550';
     ctx.fillRect(0, 0, w, h);
     ctx.fillStyle = '#e8b820';
     ctx.fillRect(40, 240, 432, 10);
@@ -146,9 +149,10 @@ export function buildGarageScene(rng, state) {
   car.position.set(0, 0.55, 0);
   scene.add(car);
 
-  // Mechanic Dante Rook, standing by the car, facing it.
+  // Mechanic Dante Rook, standing by the car, facing it (kept left of the shop
+  // panel's edge after the camera shift).
   const dante = makePerson({ jacket: 0x4a5a3a, pants: 0x2e2a24, skin: 0x8a5a3a, hair: 0x1a1a1a });
-  dante.position.set(3.6, 0, 0.9);
+  dante.position.set(2.6, 0, 0.9);
   dante.rotation.y = -Math.PI / 2;
   scene.add(dante);
 
@@ -209,19 +213,19 @@ export function buildGarageScene(rng, state) {
   scene.add(bulb);
 
   // Lighting: warm key spot on the car, warm practicals, a cool rim from the door.
-  const hemi = new THREE.HemisphereLight(0xffe0b0, 0x3a2a20, 0.55);
+  const hemi = new THREE.HemisphereLight(0xffe0b0, 0x3a2a20, 0.85);
   scene.add(hemi);
-  const key = new THREE.SpotLight(0xffd9a0, 800, 18, 0.62, 0.5, 1.5);
+  const key = new THREE.SpotLight(0xffd9a0, 1000, 18, 0.62, 0.5, 1.5);
   key.position.set(2, 5.5, 4.5);
   key.target.position.set(0, 0.8, 0);
   scene.add(key);
   scene.add(key.target);
   for (const px of [-2.5, 2.5]) {
-    const practical = new THREE.PointLight(0xffc070, 140, 13, 1.8);
+    const practical = new THREE.PointLight(0xffc070, 200, 13, 1.8);
     practical.position.set(px, 4.2, 1.2);
     scene.add(practical);
   }
-  const rim = new THREE.PointLight(0x6a8aff, 70, 12, 1.8);
+  const rim = new THREE.PointLight(0x6a8aff, 100, 12, 1.8);
   rim.position.set(-5.5, 2.5, 4.5);
   scene.add(rim);
 

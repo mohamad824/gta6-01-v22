@@ -61,7 +61,7 @@ function makeHaloTexture() {
 export function makeSun() {
   const group = new THREE.Group();
   const disc = new THREE.Mesh(
-    new THREE.CircleGeometry(7, 40),
+    new THREE.CircleGeometry(10, 40),
     new THREE.MeshBasicMaterial({ color: PALETTE.sun, fog: false }),
   );
   group.add(disc);
@@ -71,9 +71,9 @@ export function makeSun() {
     depthWrite: false,
     fog: false,
   }));
-  halo.scale.set(46, 46, 1);
+  halo.scale.set(70, 70, 1);
   group.add(halo);
-  group.position.set(-70, 16, -150);
+  group.position.set(-55, 14, -130);
   group.lookAt(0, 2, 20);
   return group;
 }

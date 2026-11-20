@@ -131,9 +131,11 @@ export function renderMapOverlay(world) {
   if (canvas) drawMap(canvas, world.state);
   const root = el('map-root');
   if (root) {
+    // One line per row: chapter + title + reward + status (no description — the
+    // 320px column cannot hold five elements without wrapping, v21's flaw).
     root.innerHTML = mapMissionRows(world.state).map((m) => (
       `<div class="map-row ${m.status.toLowerCase()}"><span class="map-ch">${m.ch}</span>` +
-      `<span class="map-title">${m.title}</span><span class="map-desc">${m.desc}</span>` +
+      `<span class="map-title">${m.title}</span>` +
       `<span class="map-reward">$${m.reward.toLocaleString('en-US')}</span>` +
       `<span class="map-status">${m.status}</span></div>`
     )).join('');

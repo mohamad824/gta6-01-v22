@@ -9,7 +9,7 @@ function beamMaterial() {
     depthWrite: false,
     side: THREE.DoubleSide,
     blending: THREE.AdditiveBlending,
-    uniforms: { intensity: { value: 0.55 } },
+    uniforms: { intensity: { value: 0.35 } },
     vertexShader: `
       varying vec2 vUv;
       void main() {
@@ -96,11 +96,11 @@ export function buildHeli() {
   light.position.set(0, -0.8, -0.6);
   group.add(light);
   group.add(light.target);
-  const cone = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 2.6, 13, 20, 1, true), beamMaterial());
+  const cone = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 2.6, 13, 20, 1, true), beamMaterial());
   cone.position.set(0, -7.2, -0.6);
   group.add(cone);
   const pool = new THREE.Mesh(
-    new THREE.PlaneGeometry(7, 7),
+    new THREE.PlaneGeometry(9, 9),
     new THREE.MeshBasicMaterial({
       map: poolTexture(), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false,
     }),
@@ -113,7 +113,7 @@ export function buildHeli() {
 
 /** Hover above the hero, spin the rotor, keep the beam and pool on the road. */
 export function updateHeli(heli, hero, dt, time) {
-  heli.group.position.set(hero.x + 2.5, 14 + Math.sin(time * 0.7) * 0.4, hero.z - 8);
+  heli.group.position.set(hero.x + 2.5, 12.5 + Math.sin(time * 0.7) * 0.4, hero.z - 6);
   heli.group.rotation.y = Math.sin(time * 0.2) * 0.2;
   heli.rotor.rotation.y += dt * 22;
   // The pool stays on the road under the beam, following the hero.

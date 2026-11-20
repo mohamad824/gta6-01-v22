@@ -21,8 +21,8 @@ function facadeTexture(rng, base) {
     ctx.fillRect(0, 0, w, h);
     for (let row = 0; row < 8; row += 1) {
       for (let col = 0; col < 6; col += 1) {
-        const lit = rng() > 0.45;
-        ctx.fillStyle = lit ? (rng() > 0.5 ? '#ffd27a' : '#ffb35a') : '#1c1410';
+        const lit = rng() > 0.3;
+        ctx.fillStyle = lit ? (rng() > 0.5 ? '#ffe09a' : '#ffc06a') : '#241a14';
         ctx.fillRect(14 + col * 40, 14 + row * 30, 24, 18);
       }
     }
@@ -81,7 +81,7 @@ export function makePalm(rng) {
   trunk.rotation.z = range(rng, -0.08, 0.08);
   trunk.castShadow = true;
   palm.add(trunk);
-  const frondMat = new THREE.MeshStandardMaterial({ color: 0x2e6a2e, roughness: 0.85, side: THREE.DoubleSide });
+  const frondMat = new THREE.MeshStandardMaterial({ color: 0x4a8a3a, roughness: 0.85, side: THREE.DoubleSide });
   for (let i = 0; i < 8; i += 1) {
     const frond = new THREE.Mesh(new THREE.ConeGeometry(0.28, 2.4, 4), frondMat);
     frond.scale.set(1, 1, 0.16);
@@ -116,12 +116,12 @@ export function buildCity(scene, rng) {
   add(new THREE.Mesh(new THREE.PlaneGeometry(220, 220), groundMat), 40, 0, -30).rotation.x = -Math.PI / 2;
   const sandMat = new THREE.MeshStandardMaterial({ color: 0xe0b878, roughness: 1 });
   add(new THREE.Mesh(new THREE.PlaneGeometry(60, 220), sandMat), -38, 0.01, -30).rotation.x = -Math.PI / 2;
-  const seaMat = new THREE.MeshStandardMaterial({ color: 0x2e7f8a, roughness: 0.25, metalness: 0.4 });
-  add(new THREE.Mesh(new THREE.PlaneGeometry(80, 220), seaMat), -105, 0.02, -30).rotation.x = -Math.PI / 2;
+  const seaMat = new THREE.MeshStandardMaterial({ color: 0x4a9aa8, roughness: 0.15, metalness: 0.6 });
+  add(new THREE.Mesh(new THREE.PlaneGeometry(60, 220), seaMat), -70, 0.02, -30).rotation.x = -Math.PI / 2;
 
   // The boulevard: asphalt with a bright centre line, lane dashes, crosswalks,
   // and wet-reflection streaks (additive planes) so the road never reads bare brown.
-  const roadMat = new THREE.MeshStandardMaterial({ color: 0x4a3a34, roughness: 0.35, metalness: 0.15 });
+  const roadMat = new THREE.MeshStandardMaterial({ color: 0x6a5148, roughness: 0.35, metalness: 0.15 });
   const road = new THREE.Mesh(new THREE.PlaneGeometry(14, 220), roadMat);
   add(road, 0, 0.03, -30).rotation.x = -Math.PI / 2;
   road.receiveShadow = true;
@@ -165,12 +165,12 @@ export function buildCity(scene, rng) {
 
   // Buildings (right side): varied heights, lit-window facades, balconies, signs.
   const buildingDefs = [
-    { x: 14, z: -8, w: 10, h: 14, d: 10, base: '#8a4a34' },
-    { x: 15, z: -22, w: 9, h: 20, d: 9, base: '#6a4a3a' },
-    { x: 14, z: -38, w: 11, h: 10, d: 10, base: '#a05a3a' },
-    { x: 16, z: -54, w: 9, h: 24, d: 9, base: '#5a3a4a' },
-    { x: 15, z: -70, w: 10, h: 16, d: 10, base: '#7a5a44' },
-    { x: 14, z: 8, w: 10, h: 12, d: 10, base: '#94503a' },
+    { x: 14, z: -8, w: 10, h: 14, d: 10, base: '#a86a48' },
+    { x: 15, z: -22, w: 9, h: 20, d: 9, base: '#8a6a50' },
+    { x: 14, z: -38, w: 11, h: 10, d: 10, base: '#b8724a' },
+    { x: 16, z: -54, w: 9, h: 24, d: 9, base: '#7a5a62' },
+    { x: 15, z: -70, w: 10, h: 16, d: 10, base: '#96745a' },
+    { x: 14, z: 8, w: 10, h: 12, d: 10, base: '#ac6850' },
   ];
   for (const def of buildingDefs) {
     const mat = new THREE.MeshStandardMaterial({

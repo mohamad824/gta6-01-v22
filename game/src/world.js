@@ -26,7 +26,7 @@ const CAMERAS = {
 export function createWorld(rng, seed) {
   const state = createState();
   const scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0xff8a3a, 60, 220);
+  scene.fog = new THREE.Fog(0xff8a3a, 90, 280);
 
   // Golden-hour light: low warm sun from the west, warm hemisphere fill.
   const sun = new THREE.DirectionalLight(0xffb066, 2.6);
@@ -44,8 +44,14 @@ export function createWorld(rng, seed) {
   sun.shadow.intensity = 0.7;
   scene.add(sun);
   scene.add(sun.target);
-  scene.add(new THREE.HemisphereLight(0xff9a4d, 0x7a5a3a, 0.95));
-  scene.add(new THREE.AmbientLight(0xffc090, 0.25));
+  scene.add(new THREE.HemisphereLight(0xff9a4d, 0x7a5a3a, 1.5));
+  scene.add(new THREE.AmbientLight(0xffc090, 0.55));
+  // Warm bounce from behind the camera: the cars' rears (the side the chase
+  // camera sees) must read orange and white, not black silhouettes.
+  const bounce = new THREE.DirectionalLight(0xffd9a0, 1.4);
+  bounce.position.set(30, 12, 40);
+  scene.add(bounce);
+  scene.add(bounce.target);
 
   // Environment lighting: prefilter the sunset sky itself (PMREM from a scene).
   // (The PMREM pass needs the real renderer, so it runs in applyEnvironment().)
@@ -71,7 +77,7 @@ export function createWorld(rng, seed) {
   ];
 
   const heli = buildHeli();
-  heli.group.position.set(2.5, 14, -8);
+  heli.group.position.set(2.5, 12.5, -6);
   scene.add(heli.group);
 
   const traffic = buildTraffic(rng, 10);
@@ -99,7 +105,7 @@ export function applyEnvironment(world, renderer, rng) {
   envScene.add(makeSky(rng));
   const pmrem = new THREE.PMREMGenerator(renderer);
   world.scene.environment = pmrem.fromScene(envScene, 0.04).texture;
-  world.scene.environmentIntensity = 0.7;
+  world.scene.environmentIntensity = 1.1;
   pmrem.dispose();
 }
 
@@ -279,7 +285,7 @@ export function resetToStaged(world) {
     car.position.set(spots[i][0], 0, spots[i][1]);
     car.rotation.y = spots[i][2];
   });
-  world.heli.group.position.set(2.5, 14, -8);
+  world.heli.group.position.set(2.5, 12.5, -6);
   world.time = 0;
   world.dispatchLine = 'All units, suspect is westbound on the boulevard. Air One has the light.';
 }

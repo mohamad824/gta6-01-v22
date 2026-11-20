@@ -74,8 +74,9 @@ export function drawMap(canvas, state) {
     ctx.fillText(def.sub, d.x + 14, d.y + 60);
   }
 
-  // SUNSET BLVD: a yellow line down the middle with its label INSIDE the panel,
-  // padded from the top edge (v21's label was clipped at the district edge).
+  // SUNSET BLVD: a yellow line down the middle with its label at the BOTTOM of
+  // the line, inside the panel with padding — never over a district title (v21's
+  // label was clipped at the top edge and covered HILLSIDE).
   ctx.strokeStyle = '#e8b820';
   ctx.lineWidth = 7;
   ctx.beginPath();
@@ -83,11 +84,11 @@ export function drawMap(canvas, state) {
   ctx.lineTo(540, 560);
   ctx.stroke();
   ctx.fillStyle = '#1a1a1a';
-  ctx.fillRect(486, 26, 108, 26);
+  ctx.fillRect(486, 516, 108, 26);
   ctx.fillStyle = '#e8b820';
   ctx.font = 'bold 15px system-ui, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('SUNSET BLVD', 540, 44);
+  ctx.fillText('SUNSET BLVD', 540, 534);
 
   // Mission markers: green done, yellow active, grey locked.
   for (const m of MARKERS) {

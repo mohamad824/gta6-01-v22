@@ -27,16 +27,16 @@ export function drawMinimap(canvas, hero, police, missionPos) {
   ctx.arc(R, R, R - 2, 0, Math.PI * 2);
   ctx.clip();
   // Land + sea.
-  ctx.fillStyle = '#141a20';
+  ctx.fillStyle = '#232e35';
   ctx.fillRect(0, 0, S, S);
-  ctx.fillStyle = '#2e7f8a';
+  ctx.fillStyle = '#3f8f9a';
   ctx.fillRect(0, 0, S * 0.16, S);
   // District tints (faint) + streets.
   ctx.fillStyle = 'rgba(217,179,128,0.25)';
   ctx.fillRect(S * 0.16, 0, S * 0.3, S * 0.4);
   ctx.fillStyle = 'rgba(63,143,138,0.3)';
   ctx.fillRect(S * 0.6, S * 0.6, S * 0.4, S * 0.4);
-  ctx.strokeStyle = 'rgba(232,232,232,0.35)';
+  ctx.strokeStyle = 'rgba(232,232,232,0.55)';
   ctx.lineWidth = 1.5;
   for (const st of STREETS) {
     ctx.beginPath();
@@ -61,10 +61,11 @@ export function drawMinimap(canvas, hero, police, missionPos) {
     ctx.fillRect(-5, -5, 10, 10);
     ctx.restore();
   }
-  // Police (blue dots).
+  // Police (blue dots). Entries may be car groups or { car } units.
   ctx.fillStyle = '#4a8aff';
   for (const p of police) {
-    const m = toMap(p.car.position.x, p.car.position.z);
+    const pos = p.car ? p.car.position : p.position;
+    const m = toMap(pos.x, pos.z);
     ctx.beginPath();
     ctx.arc(m.u * S, m.v * S, 4, 0, Math.PI * 2);
     ctx.fill();

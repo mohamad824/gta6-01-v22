@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SOLANO BAY — Open World Police Chase</title>
+<link rel="icon" href="./favicon.ico">
 <style>
   html, body { margin: 0; height: 100%; overflow: hidden; background: #1a0f08; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #f2ede6; }
   #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
@@ -99,7 +100,9 @@
   #mechanic-chip { position: absolute; top: 14px; left: 14px; max-width: 340px; }
   #mechanic-quote { font-size: 13px; line-height: 1.4; }
   #mechanic-chip .who { font-size: 11px; letter-spacing: 0.12em; color: #ffb02a; font-weight: 700; margin-bottom: 4px; }
-  #mission-passed { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); text-align: center; display: none; }
+  /* Bottom-left, over empty floor: the mechanic chip owns the top-left and the
+     sign owns the top-centre, so the passed panel cannot overlap either. */
+  #mission-passed { position: absolute; bottom: 14px; left: 14px; text-align: left; display: none; max-width: 48%; }
   #mission-passed h2 { font-size: 22px; margin: 0; }
   #mp-stats { font-size: 12px; color: #d8d2c8; margin-top: 4px; }
   #mp-line { font-size: 13px; margin-top: 4px; }
