@@ -80,11 +80,11 @@ export function buildGarageScene(rng, state) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x1a1410);
   const camera = new THREE.PerspectiveCamera(50, 1280 / 720, 0.1, 60);
-  camera.position.set(0, 2.4, 10.5);
+  camera.position.set(0, 2.2, 9);
   // Look slightly right of the room's centre so the sign, the car and the
   // mechanic all sit in the LEFT half of the frame — the DOM shop panel covers
   // the right 46%, and v21's sign died behind it ("DIE'S GARA").
-  camera.lookAt(2.2, 1.4, 0);
+  camera.lookAt(2.2, 1.3, 0);
 
   // Floor with painted markings + oil stains.
   const floorTex = canvasTexture(512, 512, (ctx, w, h) => {
@@ -130,7 +130,7 @@ export function buildGarageScene(rng, state) {
   scene.add(sign);
 
   // Lift: two posts (max height 1.9, below the sign) + turntable with striped ring.
-  const postMat = new THREE.MeshStandardMaterial({ color: 0xd8b820, roughness: 0.5, metalness: 0.4 });
+  const postMat = new THREE.MeshStandardMaterial({ color: 0x9a7a20, roughness: 0.5, metalness: 0.4 });
   for (const side of [-1, 1]) {
     const post = new THREE.Mesh(new THREE.BoxGeometry(0.35, 1.9, 0.5), postMat);
     post.position.set(side * 2.3, 0.95, 0);
@@ -143,16 +143,17 @@ export function buildGarageScene(rng, state) {
   turntable.position.set(0, 0.06, 0);
   scene.add(turntable);
 
-  // The hero car, side-on, up on the lift.
+  // The hero car, side-on, up on the lift (low enough that the wheels nearly
+  // touch the turntable — a floating car reads as a rendering bug).
   const car = buildCar({ kind: 'sedan', color: state.vehicle.color });
   car.rotation.y = Math.PI / 2; // length along X: side-on to the camera
-  car.position.set(0, 0.55, 0);
+  car.position.set(0, 0.3, 0);
   scene.add(car);
 
   // Mechanic Dante Rook, standing by the car, facing it (kept left of the shop
   // panel's edge after the camera shift).
   const dante = makePerson({ jacket: 0x4a5a3a, pants: 0x2e2a24, skin: 0x8a5a3a, hair: 0x1a1a1a });
-  dante.position.set(2.6, 0, 0.9);
+  dante.position.set(1.6, 0, 0.9);
   dante.rotation.y = -Math.PI / 2;
   scene.add(dante);
 

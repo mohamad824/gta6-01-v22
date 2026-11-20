@@ -77,7 +77,7 @@ export function createWorld(rng, seed) {
   ];
 
   const heli = buildHeli();
-  heli.group.position.set(2.5, 12.5, -6);
+  heli.group.position.set(2.5, 10.5, -5);
   scene.add(heli.group);
 
   const traffic = buildTraffic(rng, 10);
@@ -285,7 +285,7 @@ export function resetToStaged(world) {
     car.position.set(spots[i][0], 0, spots[i][1]);
     car.rotation.y = spots[i][2];
   });
-  world.heli.group.position.set(2.5, 12.5, -6);
+  world.heli.group.position.set(2.5, 10.5, -5);
   world.time = 0;
   world.dispatchLine = 'All units, suspect is westbound on the boulevard. Air One has the light.';
 }

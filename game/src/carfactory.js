@@ -4,7 +4,7 @@
 // emissive lights and a police light bar. Proportions: 1 unit ≈ 1 m.
 import * as THREE from '../vendor/three/three.module.min.js';
 
-const PAINT = (color) => new THREE.MeshStandardMaterial({ color, metalness: 0.9, roughness: 0.3 });
+const PAINT = (color, metalness = 0.9, roughness = 0.3) => new THREE.MeshStandardMaterial({ color, metalness, roughness });
 const GLASS_MAT = new THREE.MeshStandardMaterial({
   color: 0x111122, metalness: 0, roughness: 0.05, transparent: true, opacity: 0.72, envMapIntensity: 1.5,
 });
@@ -91,7 +91,7 @@ function makeWheel() {
   return wheel;
 }
 
-function makeGlasshouse(spec, paint) {
+function makeGlasshouse(spec, paint, paintMetal, paintRough) {
   const g = new THREE.Group();
   const cabinL = spec.length * 0.46;
   const cabinW = spec.width * 0.82;
@@ -99,7 +99,7 @@ function makeGlasshouse(spec, paint) {
   // Cabin shell: a box tapering rearward (narrower at the roof), darker than the body.
   const shell = new THREE.Mesh(
     new THREE.BoxGeometry(cabinL, cabinH, cabinW),
-    new THREE.MeshStandardMaterial({ color: paint, metalness: 0.85, roughness: 0.35 }),
+    new THREE.MeshStandardMaterial({ color: paint, metalness: paintMetal, roughness: paintRough + 0.05 }),
   );
   shell.position.set(-spec.length * 0.04, spec.bodyH + cabinH / 2 - 0.02, 0);
   shell.scale.set(1, 1, 0.94);
@@ -204,6 +204,10 @@ export function buildCar(specIn) {
   const spec = { ...(KIND_SPECS[specIn.kind] || KIND_SPECS.sedan), ...specIn };
   const car = new THREE.Group();
   const paint = spec.color;
+  // Police white must read WHITE, not tan: a cruiser's paint carries less metal
+  // (more diffuse) than civilian paint, so the bounce light shows its colour.
+  const paintMetal = spec.police ? 0.5 : 0.9;
+  const paintRough = spec.police ? 0.45 : 0.3;
 
   // Lower body: extruded silhouette, bevelled, crowned, wheel wells cut in.
   const shape = bodyShape(spec);
@@ -217,14 +221,14 @@ export function buildCar(specIn) {
   });
   geo.translate(0, 0, -(spec.width - 0.1) / 2);
   crownHoodTrunk(geo, spec);
-  const body = new THREE.Mesh(geo, PAINT(paint));
+  const body = new THREE.Mesh(geo, PAINT(paint, paintMetal, paintRough));
   body.castShadow = true;
   car.add(body);
 
   // Fenders bulge over the wheels (front slightly more elongated).
   for (const [axle, sx] of [[spec.length / 2 - 0.8, 1.15], [-spec.length / 2 + 1.0, 1.0]]) {
     for (const side of [-1, 1]) {
-      const fender = new THREE.Mesh(new THREE.SphereGeometry(0.42, 12, 8), PAINT(paint));
+      const fender = new THREE.Mesh(new THREE.SphereGeometry(0.42, 12, 8), PAINT(paint, paintMetal, paintRough));
       fender.scale.set(sx, 0.55, 0.32);
       fender.position.set(axle, 0.42, side * (spec.width / 2 - 0.05));
       car.add(fender);
@@ -232,7 +236,7 @@ export function buildCar(specIn) {
   }
 
   // Glasshouse (separate group) + lights + details.
-  car.add(makeGlasshouse(spec, paint));
+  car.add(makeGlasshouse(spec, paint, paintMetal, paintRough));
   addLights(car, spec, spec.police);
 
   // Bumpers: separate elements, protruding past the body.
@@ -250,7 +254,7 @@ export function buildCar(specIn) {
     const arm = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.03, 0.14), DARK);
     arm.position.set(spec.length * 0.2, spec.bodyH + 0.08, side * (spec.width / 2 + 0.06));
     car.add(arm);
-    const mirror = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 0.05), PAINT(paint));
+    const mirror = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 0.05), PAINT(paint, paintMetal, paintRough));
     mirror.position.set(spec.length * 0.2, spec.bodyH + 0.1, side * (spec.width / 2 + 0.13));
     car.add(mirror);
     const doorLine = new THREE.Mesh(new THREE.BoxGeometry(1.7, 0.015, 0.012), DARK);

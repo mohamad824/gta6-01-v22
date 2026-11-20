@@ -25,7 +25,7 @@ export function buildPoliceFleet() {
     { x: 5.5, z: -6, heading: 0.5 },
   ];
   for (const spot of spots) {
-    const car = buildCar({ kind: 'sedan', color: 0xe8e4da, police: true });
+    const car = buildCar({ kind: 'sedan', color: 0xf2efe8, police: true });
     car.position.set(spot.x, 0, spot.z);
     car.rotation.y = spot.heading;
     fleet.push(car);
