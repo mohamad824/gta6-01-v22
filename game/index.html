@@ -3,17 +3,239 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Block Dodger</title>
+<title>SOLANO BAY — Open World Police Chase</title>
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #11141b; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1a0f08; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: #f2ede6; }
   #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-  /* Read aloud, never shown: the status line screen readers announce. */
   #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+  .panel { background: rgba(8, 10, 14, 0.72); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 8px; padding: 10px 12px; }
+  /* Mission, top-left */
+  #mission-panel { position: absolute; top: 14px; left: 14px; width: 300px; }
+  #mission-ch { font-size: 11px; letter-spacing: 0.14em; color: #ffb02a; font-weight: 700; }
+  #mission-title { font-size: 24px; font-weight: 800; letter-spacing: 0.04em; margin: 2px 0; }
+  #mission-desc { font-size: 13px; color: #d8d2c8; }
+  #mission-stage { font-size: 11px; color: #a8a29a; margin-top: 6px; letter-spacing: 0.08em; }
+  #mission-bar { height: 6px; background: rgba(255,255,255,0.18); border-radius: 3px; margin-top: 6px; overflow: hidden; }
+  #mission-fill { height: 100%; width: 0%; background: #ffb02a; border-radius: 3px; }
+  #mission-chip { display: none; margin-top: 8px; background: #ffb02a; color: #1a1206; font-weight: 800; font-size: 11px; letter-spacing: 0.1em; padding: 3px 8px; border-radius: 4px; }
+  /* Stats, top-right */
+  #stats-panel { position: absolute; top: 14px; right: 14px; width: 230px; text-align: right; }
+  #stars { font-size: 22px; color: #ffb02a; letter-spacing: 2px; line-height: 1; }
+  #stars.hot { color: #ff3b30; }
+  #cash { font-size: 26px; font-weight: 800; margin-top: 2px; }
+  #day-time { font-size: 12px; color: #d8d2c8; letter-spacing: 0.08em; }
+  .bar-row { display: flex; align-items: center; gap: 6px; margin-top: 5px; font-size: 10px; letter-spacing: 0.1em; color: #b8b2a8; }
+  .bar-row .bar { flex: 1; height: 6px; background: rgba(255,255,255,0.18); border-radius: 3px; overflow: hidden; }
+  .bar-row .bar > div { height: 100%; border-radius: 3px; }
+  #health-fill { background: #3aa84a; width: 78%; }
+  #armour-fill { background: #4a8aff; width: 64%; }
+  #respect-fill { background: #ffb02a; width: 100%; }
+  /* Roster, right side */
+  #roster { position: absolute; top: 190px; right: 14px; width: 250px; }
+  #roster h3 { margin: 0 0 6px; font-size: 11px; letter-spacing: 0.14em; color: #ffb02a; }
+  .roster-row { display: flex; gap: 8px; font-size: 12px; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .roster-row:last-child { border-bottom: none; }
+  .roster-unit { font-weight: 700; width: 76px; }
+  .roster-verb { flex: 1; color: #ffb02a; }
+  .roster-dist { color: #d8d2c8; }
+  /* Minimap, bottom-left */
+  #minimap-wrap { position: absolute; left: 14px; bottom: 14px; text-align: center; }
+  #minimap { width: 180px; height: 180px; border-radius: 50%; display: block; }
+  #minimap-label { font-size: 11px; letter-spacing: 0.14em; color: #d8d2c8; margin-top: 4px; }
+  /* Dispatch, bottom-centre */
+  #dispatch { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; gap: 10px; align-items: center; max-width: 480px; }
+  #dispatch-portrait { width: 64px; height: 64px; border-radius: 6px; flex: none; }
+  #dispatch-name { font-size: 11px; letter-spacing: 0.12em; color: #ffb02a; font-weight: 700; }
+  #dispatch-line { font-size: 13px; line-height: 1.35; }
+  /* Vehicle, bottom-right */
+  #vehicle-panel { position: absolute; right: 14px; bottom: 14px; width: 300px; text-align: right; }
+  #speed-row { display: flex; align-items: baseline; justify-content: flex-end; gap: 6px; }
+  #speed { font-size: 52px; font-weight: 800; line-height: 0.9; }
+  #speed-unit { font-size: 13px; color: #d8d2c8; }
+  #vehicle-name { font-size: 13px; font-weight: 700; letter-spacing: 0.06em; margin-top: 2px; }
+  #radio-line { font-size: 12px; color: #ffd27a; margin-top: 4px; pointer-events: auto; cursor: pointer; }
+  #weapon-slots { display: flex; gap: 6px; justify-content: flex-end; margin-top: 8px; }
+  .weapon-slot { background: rgba(8,10,14,0.72); border: 1px solid rgba(255,255,255,0.16); border-radius: 6px; padding: 6px 8px; min-width: 44px; text-align: center; }
+  .weapon-slot.active { border-color: #ffb02a; background: rgba(255,176,42,0.18); }
+  .weapon-key { display: block; font-size: 9px; color: #a8a29a; }
+  .weapon-name { display: block; font-size: 11px; font-weight: 700; }
+  .weapon-ammo { display: block; font-size: 12px; color: #ffb02a; }
+  /* Prompt + vignette */
+  #prompt { position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); background: rgba(8,10,14,0.8); border: 1px solid #ffb02a; color: #ffd27a; font-weight: 700; font-size: 15px; letter-spacing: 0.06em; padding: 8px 16px; border-radius: 6px; display: none; }
+  #vignette { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 55%, rgba(180,20,10,0.55) 100%); opacity: 0; z-index: 6; }
+  #damage-flash { position: fixed; inset: 0; pointer-events: none; background: rgba(200,30,10,0.35); opacity: 0; z-index: 6; }
+  /* Overlays */
+  .overlay { position: fixed; inset: 0; display: none; z-index: 10; align-items: center; justify-content: center; }
+  .overlay .card { background: rgba(10,12,16,0.92); border: 1px solid rgba(255,255,255,0.14); border-radius: 12px; padding: 28px 32px; text-align: center; max-width: 560px; }
+  .overlay h1 { margin: 0 0 4px; font-size: 44px; letter-spacing: 0.06em; }
+  .overlay h2 { margin: 0 0 12px; font-size: 28px; letter-spacing: 0.08em; }
+  .overlay p { color: #d8d2c8; line-height: 1.5; }
+  .btn { pointer-events: auto; cursor: pointer; background: #ffb02a; color: #1a1206; border: none; font-weight: 800; font-size: 15px; letter-spacing: 0.06em; padding: 12px 22px; border-radius: 8px; margin: 6px 4px 0; }
+  .btn.ghost { background: transparent; color: #f2ede6; border: 1px solid rgba(255,255,255,0.35); }
+  .btn:disabled { opacity: 0.45; cursor: default; }
+  #overlay-title { background: linear-gradient(180deg, rgba(20,8,4,0.55), rgba(20,8,4,0.85)); }
+  #overlay-title .card { background: transparent; border: none; }
+  #overlay-title .tagline { color: #ffb02a; letter-spacing: 0.2em; font-size: 12px; font-weight: 700; }
+  #overlay-title .controls { font-size: 13px; color: #b8b2a8; margin-top: 14px; line-height: 1.7; }
+  /* Map overlay */
+  #overlay-map { background: #0d0f12; align-items: stretch; justify-content: flex-start; }
+  #map-wrap { display: flex; width: 100%; height: 100%; padding: 24px; box-sizing: border-box; gap: 20px; }
+  #map-canvas-wrap { flex: 0 0 78%; display: flex; align-items: center; justify-content: center; }
+  #map-canvas { width: 100%; height: auto; max-height: 100%; border-radius: 8px; }
+  #map-side { flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  #map-side h2 { font-size: 20px; margin: 0; letter-spacing: 0.08em; }
+  .map-row { display: flex; gap: 8px; align-items: baseline; font-size: 13px; padding: 7px 8px; border-bottom: 1px solid rgba(255,255,255,0.09); }
+  .map-row .map-ch { color: #ffb02a; font-weight: 700; width: 44px; flex: none; }
+  .map-row .map-title { font-weight: 700; }
+  .map-row .map-desc { color: #b8b2a8; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .map-row .map-reward { color: #3aa84a; font-weight: 700; }
+  .map-row .map-status { font-size: 10px; letter-spacing: 0.08em; padding: 2px 6px; border-radius: 3px; background: rgba(255,255,255,0.14); }
+  .map-row.active .map-status { background: #ffb02a; color: #1a1206; }
+  .map-row.done .map-status { background: #3aa84a; color: #fff; }
+  #map-progression { font-size: 12px; color: #d8d2c8; line-height: 1.6; border-top: 1px solid rgba(255,255,255,0.14); padding-top: 10px; }
+  /* Garage overlay */
+  #overlay-garage { background: transparent; align-items: stretch; justify-content: flex-end; }
+  #mechanic-chip { position: absolute; top: 14px; left: 14px; max-width: 340px; }
+  #mechanic-quote { font-size: 13px; line-height: 1.4; }
+  #mechanic-chip .who { font-size: 11px; letter-spacing: 0.12em; color: #ffb02a; font-weight: 700; margin-bottom: 4px; }
+  #mission-passed { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); text-align: center; display: none; }
+  #mission-passed h2 { font-size: 22px; margin: 0; }
+  #mp-stats { font-size: 12px; color: #d8d2c8; margin-top: 4px; }
+  #mp-line { font-size: 13px; margin-top: 4px; }
+  #mp-line span { margin: 0 8px; font-weight: 700; }
+  #garage-panel { width: 46%; min-width: 420px; height: 100%; background: rgba(13,16,20,0.94); border-left: 1px solid rgba(255,255,255,0.14); padding: 18px 20px; box-sizing: border-box; overflow-y: auto; pointer-events: auto; }
+  #garage-panel h2 { font-size: 13px; letter-spacing: 0.14em; color: #ffb02a; margin: 16px 0 6px; }
+  #garage-panel h2:first-child { margin-top: 0; }
+  #garage-cash { font-size: 26px; font-weight: 800; }
+  #garage-car-card { background: rgba(255,255,255,0.06); border-radius: 8px; padding: 10px 12px; margin-top: 8px; }
+  #garage-car-name { font-size: 20px; font-weight: 800; letter-spacing: 0.04em; }
+  #garage-condition-bar { height: 8px; background: rgba(255,255,255,0.16); border-radius: 4px; margin-top: 6px; overflow: hidden; }
+  #garage-condition-fill { height: 100%; background: #3aa84a; width: 88%; }
+  #garage-condition-text { font-size: 11px; color: #d8d2c8; margin-top: 4px; letter-spacing: 0.08em; }
+  #garage-tags { margin-top: 6px; font-size: 11px; }
+  #garage-tags span { background: rgba(58,168,74,0.25); color: #7ad88a; border-radius: 4px; padding: 2px 7px; margin-right: 6px; font-weight: 700; }
+  .shop-row { display: flex; align-items: center; gap: 10px; padding: 8px 8px; border-bottom: 1px solid rgba(255,255,255,0.08); cursor: pointer; border-radius: 6px; }
+  .shop-row:hover, .shop-row.selected { background: rgba(255,176,42,0.12); }
+  .shop-icon { flex: none; width: 44px; text-align: center; font-size: 10px; font-weight: 800; background: rgba(255,255,255,0.1); border-radius: 4px; padding: 4px 2px; color: #ffd27a; }
+  .shop-name { flex: 1; font-weight: 700; font-size: 13px; }
+  .shop-price { color: #ffb02a; font-weight: 800; font-size: 13px; }
+  .shop-buy { pointer-events: auto; cursor: pointer; background: #ffb02a; color: #1a1206; border: none; font-weight: 800; font-size: 11px; padding: 6px 10px; border-radius: 5px; }
+  .shop-buy:disabled { background: rgba(255,255,255,0.14); color: #b8b2a8; cursor: default; }
+  #garage-desc { font-size: 13px; color: #d8d2c8; background: rgba(255,255,255,0.06); border-radius: 8px; padding: 10px 12px; margin-top: 12px; min-height: 38px; }
+  #btn-leave-garage { width: 100%; margin-top: 14px; }
 </style>
 </head>
 <body>
-<canvas id="game" aria-label="Block Dodger: move the paddle left and right to dodge falling blocks and catch coins"></canvas>
+<canvas id="game" aria-label="Solano Bay: open-world police chase"></canvas>
 <p id="status" role="status" aria-live="polite"></p>
+<div id="vignette"></div>
+<div id="damage-flash"></div>
+
+<div id="hud">
+  <div id="mission-panel" class="panel">
+    <div id="mission-ch">CH. 4 · LOW TIDE</div>
+    <div id="mission-title">RUN THE COAST</div>
+    <div id="mission-desc">Lose the heat down the boulevard</div>
+    <div id="mission-stage">STAGE 7/7 · IN SIGHT</div>
+    <div id="mission-bar"><div id="mission-fill"></div></div>
+    <span id="mission-chip">OBJECTIVE COMPLETE</span>
+  </div>
+  <div id="stats-panel" class="panel">
+    <div id="stars">★★★★★</div>
+    <div id="cash">$24,680</div>
+    <div id="day-time">DAY 9 18:40</div>
+    <div class="bar-row"><span>HEALTH</span><div class="bar"><div id="health-fill"></div></div></div>
+    <div class="bar-row"><span>ARMOUR</span><div class="bar"><div id="armour-fill"></div></div></div>
+    <div class="bar-row"><span>RESPECT</span><div class="bar"><div id="respect-fill"></div></div></div>
+  </div>
+  <div id="roster" class="panel">
+    <h3>SBPD RESPONSE</h3>
+    <div id="roster-rows"></div>
+  </div>
+  <div id="minimap-wrap">
+    <canvas id="minimap" width="180" height="180"></canvas>
+    <div id="minimap-label">SOLANO BAY</div>
+  </div>
+  <div id="dispatch" class="panel">
+    <canvas id="dispatch-portrait" width="64" height="64"></canvas>
+    <div>
+      <div id="dispatch-name">CAPT. ROSA DELGADO</div>
+      <div id="dispatch-line">All units, suspect is westbound on the boulevard. Air One has the light.</div>
+    </div>
+  </div>
+  <div id="vehicle-panel" class="panel">
+    <div id="speed-row"><span id="speed">73</span><span id="speed-unit">KM/H</span></div>
+    <div id="vehicle-name">SOLSTICE GT · SEDAN · TUNE 3</div>
+    <div class="bar-row"><span>CONDITION</span><div class="bar"><div id="condition-fill"></div></div></div>
+    <div class="bar-row"><span>GRIP</span><div class="bar"><div id="grip-fill" style="background:#ffb02a"></div></div></div>
+    <div id="radio-line">BAY FM 94.7 · Marina Reyes — Neon Coast</div>
+    <div id="weapon-slots"></div>
+  </div>
+  <div id="prompt">E — STEAL CAR</div>
+</div>
+
+<div id="overlay-title" class="overlay">
+  <div class="card">
+    <div class="tagline">OPEN WORLD · FIVE-STAR PURSUIT</div>
+    <h1>SOLANO BAY</h1>
+    <p>One golden-hour pursuit down a coastal boulevard. You are Leo Marín, getaway driver in debt to fixer Mira Solano — and Captain Rosa Delgado's whole department is on your tail. Steal cars, run roadblocks under the helicopter beam, finish the job.</p>
+    <button class="btn" id="btn-start">START ENGINE</button>
+    <button class="btn ghost" id="btn-continue">CONTINUE</button>
+    <div class="controls">WASD drive / walk · E enter &amp; steal · SPACE brake · F shoot · SHIFT nitro<br>M map · G garage · P pause · 1–5 weapons · click the radio to change station</div>
+  </div>
+</div>
+
+<div id="overlay-pause" class="overlay">
+  <div class="card">
+    <h2>PAUSED</h2>
+    <p id="pause-save">Progress saved. The boulevard waits.</p>
+    <button class="btn" id="btn-resume">RESUME</button>
+    <button class="btn ghost" id="btn-quit-title">QUIT TO TITLE</button>
+    <p style="font-size:12px;color:#a8a29a">or press P to resume</p>
+  </div>
+</div>
+
+<div id="overlay-map" class="overlay">
+  <div id="map-wrap">
+    <div id="map-canvas-wrap"><canvas id="map-canvas" width="1000" height="620"></canvas></div>
+    <div id="map-side">
+      <h2>SOLANO BAY — MISSIONS</h2>
+      <div id="map-root"></div>
+      <div id="map-progression"></div>
+      <button class="btn" id="map-close">BACK TO THE STREET</button>
+    </div>
+  </div>
+</div>
+
+<div id="overlay-garage" class="overlay">
+  <div id="mechanic-chip" class="panel">
+    <div class="who">DANTE ROOK · MECHANIC</div>
+    <div id="mechanic-quote">DANTE ROOK · mechanic · "If it rolls, I can rebuild it."</div>
+  </div>
+  <div id="mission-passed" class="panel">
+    <h2 id="mp-title">MISSION PASSED — LOW TIDE</h2>
+    <div id="mp-line"><span id="mp-reward">+$3,600</span><span id="mp-respect">+140 RESPECT</span><span id="mp-grade">GRADE S</span></div>
+    <div id="mp-stats">TIME 04:12 · DAMAGE 12% · CASH $24,680 → $28,280</div>
+  </div>
+  <div id="garage-panel">
+    <h2>EDDIE'S GARAGE</h2>
+    <div id="garage-cash">$24,680</div>
+    <div id="garage-car-card">
+      <div id="garage-car-name">SOLSTICE GT</div>
+      <div id="garage-condition-bar"><div id="garage-condition-fill"></div></div>
+      <div id="garage-condition-text">CONDITION 88%</div>
+      <div id="garage-tags"><span>✓ TUNE 3</span><span>✓ PLATING</span><span>✓ NITRO</span></div>
+    </div>
+    <h2>CAR UPGRADES</h2>
+    <div id="garage-shop-upgrades"></div>
+    <h2>WEAPONS &amp; GEAR</h2>
+    <div id="garage-shop-gear"></div>
+    <div id="garage-desc">Select an item to see what it does.</div>
+    <button class="btn" id="btn-leave-garage">BACK TO THE BOULEVARD</button>
+  </div>
+</div>
+
 <script type="module" src="./src/main.js"></script>
 </body>
 </html>

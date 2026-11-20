@@ -1,124 +1,285 @@
-// The game's rules and state, with no drawing and no browser in it: the player's paddle, the
-// pool of falling blocks and coins, spawning, collisions, score, lives and level. step() advances
-// one fixed step and returns what happened as bit flags, so the caller can react without the
-// world knowing about screens or sound. Nothing here allocates after createWorld returns.
-import { BLOCK, COIN, FIELD, LEVEL, LIVES, PLAYER, POOL_SIZE } from './config.js';
+// One job: the world — scene assembly (sky, lights, city, vehicles, people, heli,
+// garage), the camera rigs, the per-step simulation, and the deterministic shot
+// staging. Rendering lives in render.js; the loop lives in main.js.
+import * as THREE from '../vendor/three/three.module.min.js';
+import { createState } from './state.js';
+import { buildCity } from './city.js';
+import { makeSky } from './sky.js';
+import { buildHero, buildPoliceFleet, buildTraffic, buildParked, driveHero } from './vehicles.js';
+import { makeLeo, makePedestrians, updatePedestrians } from './people.js';
+import { buildHeli, updateHeli } from './heli.js';
+import { createPoliceUnit, updatePolice, unitsForWanted } from './police.js';
+import { buildGarageScene } from './garage.js';
+import { addHeat, bleedHeat, CRIME_HEAT } from './wanted.js';
+import { advanceMission, completeMission } from './missions.js';
+import { shoot, switchWeapon, policeReturnFire } from './weapons.js';
+import { audio } from './audio.js';
+import { muzzleFlash, setHeat, shake } from './effects.js';
+import { nextDispatchLine } from './dispatch.js';
 
-export const KIND_BLOCK = 0;
-export const KIND_COIN = 1;
+const CAMERAS = {
+  chase: { pos: [0, 3.1, 8.6], look: [0, 0.9, -10] },
+  onfoot: { pos: [1.6, 2.3, 7.5], look: [0, 1.1, -3] },
+  title: { pos: [-6, 5.5, 16], look: [0, 1, -8] },
+};
 
-export const EVENT_HIT = 1;
-export const EVENT_COIN = 2;
-export const EVENT_OVER = 4;
+export function createWorld(rng, seed) {
+  const state = createState();
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0xff8a3a, 60, 220);
 
-function overlaps(a, b) {
-  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+  // Golden-hour light: low warm sun from the west, warm hemisphere fill.
+  const sun = new THREE.DirectionalLight(0xffb066, 2.6);
+  sun.position.set(-40, 18, -30);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(1024, 1024);
+  sun.shadow.camera.left = -25;
+  sun.shadow.camera.right = 25;
+  sun.shadow.camera.top = 25;
+  sun.shadow.camera.bottom = -25;
+  sun.shadow.camera.near = 1;
+  sun.shadow.camera.far = 120;
+  sun.shadow.normalBias = 0.02;
+  sun.shadow.bias = -0.0001;
+  sun.shadow.intensity = 0.7;
+  scene.add(sun);
+  scene.add(sun.target);
+  scene.add(new THREE.HemisphereLight(0xff9a4d, 0x7a5a3a, 0.95));
+  scene.add(new THREE.AmbientLight(0xffc090, 0.25));
+
+  // Environment lighting: prefilter the sunset sky itself (PMREM from a scene).
+  // (The PMREM pass needs the real renderer, so it runs in applyEnvironment().)
+  scene.add(makeSky(rng));
+  buildCity(scene, rng);
+
+  const heroMesh = buildHero(state);
+  scene.add(heroMesh);
+  const leo = makeLeo();
+  leo.visible = false;
+  scene.add(leo);
+  const hero = { x: 0, z: 0, heading: 0, speed: 0, onFoot: false, mesh: heroMesh, leo, vy: 0 };
+
+  const fleet = buildPoliceFleet();
+  for (const car of fleet) scene.add(car);
+  const units = [
+    createPoliceUnit(fleet[0], 'ram', 'RAMMING'),
+    createPoliceUnit(fleet[1], 'ram', 'RAMMING'),
+    createPoliceUnit(fleet[2], 'roadblock', 'ROADBLOCK'),
+    createPoliceUnit(fleet[3], 'roadblock', 'ROADBLOCK'),
+    createPoliceUnit(fleet[4], 'box', 'BOXING IN'),
+    createPoliceUnit(fleet[5], 'pursuit', 'PURSUIT'),
+  ];
+
+  const heli = buildHeli();
+  heli.group.position.set(2.5, 14, -8);
+  scene.add(heli.group);
+
+  const traffic = buildTraffic(rng, 10);
+  for (const car of traffic) scene.add(car);
+  const parked = buildParked(rng);
+  for (const car of parked) scene.add(car);
+  const peds = makePedestrians(rng, 8);
+  for (const ped of peds) scene.add(ped);
+
+  const garage = buildGarageScene(rng, state);
+  const camera = new THREE.PerspectiveCamera(55, 1280 / 720, 0.1, 500);
+
+  const world = {
+    scene, garageScene: garage.scene, garageCamera: garage.camera, garage,
+    camera, state, hero, police: fleet, units, heli, traffic, parked, peds,
+    mode: 'title', time: 0, lastShot: 0, dispatchTimer: 0, dispatchLine: '',
+    shotName: null, lastCash: state.cash, seed,
+  };
+  return world;
 }
 
-export function createWorld(random) {
-  const player = { x: 0, y: FIELD.groundY - PLAYER.height, width: PLAYER.width, height: PLAYER.height, invulnerable: 0 };
-  const items = [];
-  for (let index = 0; index < POOL_SIZE; index += 1) {
-    items.push({ active: false, kind: KIND_BLOCK, x: 0, y: 0, width: 0, height: 0, speed: 0 });
+/** Prefilter the sunset sky into the scene environment (needs the real renderer). */
+export function applyEnvironment(world, renderer, rng) {
+  const envScene = new THREE.Scene();
+  envScene.add(makeSky(rng));
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  world.scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+  world.scene.environmentIntensity = 0.7;
+  pmrem.dispose();
+}
+
+/** Position the camera from a preset (chase / onfoot / title). */
+export function setCameraPreset(world, name) {
+  const preset = CAMERAS[name];
+  world.camera.position.set(...preset.pos);
+  world.camera.lookAt(...preset.look);
+}
+
+/** Chase-follow camera: low and close behind the hero car. */
+function followCamera(world, dt) {
+  const hero = world.hero;
+  const back = 9.2;
+  const tx = hero.x - Math.sin(hero.heading) * back;
+  const tz = hero.z + Math.cos(hero.heading) * back;
+  const k = Math.min(1, dt * 5);
+  world.camera.position.x += (tx - world.camera.position.x) * k;
+  world.camera.position.y += (3.4 - world.camera.position.y) * k;
+  world.camera.position.z += (tz - world.camera.position.z) * k;
+  world.camera.lookAt(hero.x + Math.sin(hero.heading) * 8, 1.0, hero.z - Math.cos(hero.heading) * 8);
+}
+
+/** Nearest parked car within 3 m of the hero (for the steal prompt). */
+export function nearestParked(world) {
+  let best = null;
+  let bestDist = 3;
+  for (const car of world.parked) {
+    if (!car.visible) continue;
+    const d = Math.hypot(car.position.x - world.hero.x, car.position.z - world.hero.z);
+    if (d < bestDist) { best = car; bestDist = d; }
   }
-  const state = { player, items, score: 0, lives: LIVES, level: 1, elapsed: 0, blockTimer: 0, coinTimer: 0 };
+  return best;
+}
 
-  function reset() {
-    player.x = (FIELD.width - player.width) / 2;
-    player.invulnerable = 0;
-    for (const item of items) item.active = false;
-    state.score = 0;
-    state.lives = LIVES;
-    state.level = 1;
-    state.elapsed = 0;
-    state.blockTimer = BLOCK.interval;
-    state.coinTimer = COIN.interval;
+function enterCar(world, parkedCar) {
+  const state = world.state;
+  world.hero.onFoot = false;
+  world.hero.mesh.visible = true;
+  world.hero.leo.visible = false;
+  world.hero.mesh.position.set(parkedCar.position.x, 0, parkedCar.position.z);
+  world.hero.x = parkedCar.position.x;
+  world.hero.z = parkedCar.position.z;
+  world.hero.heading = parkedCar.rotation.y;
+  world.hero.speed = 0;
+  state.vehicle.name = parkedCar.userData.steal.name;
+  state.vehicle.kind = parkedCar.userData.steal.kind;
+  state.vehicle.color = parkedCar.userData.steal.color;
+  parkedCar.visible = false;
+  addHeat(state, CRIME_HEAT.steal);
+}
+
+function exitCar(world) {
+  const hero = world.hero;
+  hero.onFoot = true;
+  hero.speed = 0;
+  hero.mesh.visible = false;
+  hero.leo.visible = true;
+  hero.leo.position.set(hero.x + 1.6, 0, hero.z + 0.8);
+  hero.leo.rotation.y = Math.PI;
+}
+
+/**
+ * One simulation step (play mode only). `drive`/`walk` are the input intents,
+ * `actions` the drained bitmask. Returns events for the loop.
+ */
+export function stepWorld(world, input, actions, dt) {
+  const state = world.state;
+  const hero = world.hero;
+  const events = { missionComplete: null, rammed: false, shot: false };
+  world.time += dt;
+
+  // Weapon switching (keys 1–5).
+  for (let i = 0; i < 5; i += 1) {
+    if (actions & (128 << i)) switchWeapon(state, i);
   }
-
-  function freeItem() {
-    for (let index = 0; index < items.length; index += 1) if (!items[index].active) return items[index];
-    return null;
-  }
-
-  function spawnBlock() {
-    const item = freeItem();
-    if (item === null) return;
-    item.active = true;
-    item.kind = KIND_BLOCK;
-    item.width = BLOCK.minWidth + random() * (BLOCK.maxWidth - BLOCK.minWidth);
-    item.height = BLOCK.height;
-    item.x = random() * (FIELD.width - item.width);
-    item.y = -item.height;
-    item.speed = BLOCK.speed + BLOCK.speedPerLevel * (state.level - 1) + random() * BLOCK.speedJitter;
-  }
-
-  function spawnCoin() {
-    const item = freeItem();
-    if (item === null) return;
-    item.active = true;
-    item.kind = KIND_COIN;
-    item.width = COIN.size;
-    item.height = COIN.size;
-    item.x = random() * (FIELD.width - item.width);
-    item.y = -item.height;
-    item.speed = COIN.speed + COIN.speedPerLevel * (state.level - 1);
-  }
-
-  function blockInterval() {
-    return Math.max(BLOCK.minInterval, BLOCK.interval * BLOCK.intervalScale ** (state.level - 1));
-  }
-
-  /**
-   * One fixed step. `direction` is -1, 0 or 1 (left, still, right). With `harmless` set (the title
-   * screen's backdrop) things fall but nothing touches the player and nothing scores.
-   */
-  function step(dt, direction, harmless) {
-    let events = 0;
-    state.elapsed += dt;
-    state.level = Math.min(LEVEL.max, 1 + Math.floor(state.elapsed / LEVEL.seconds));
-
-    player.x = Math.min(FIELD.width - player.width, Math.max(0, player.x + direction * PLAYER.speed * dt));
-    if (player.invulnerable > 0) player.invulnerable = Math.max(0, player.invulnerable - dt);
-
-    state.blockTimer -= dt;
-    if (state.blockTimer <= 0) {
-      spawnBlock();
-      state.blockTimer += blockInterval();
+  // Shooting (F or click): spends ammo, flashes, adds heat.
+  if (actions & 32) {
+    const res = shoot(state, world.time, world.lastShot);
+    if (res.fired) {
+      world.lastShot = world.time;
+      events.shot = true;
+      audio.gunshot();
+      const fx = hero.onFoot ? hero.leo.position : hero.mesh.position;
+      muzzleFlash(world.scene, THREE, new THREE.Vector3(fx.x, 1.2, fx.z - 2));
+      addHeat(state, CRIME_HEAT.shoot);
     }
-    state.coinTimer -= dt;
-    if (state.coinTimer <= 0) {
-      spawnCoin();
-      state.coinTimer += COIN.interval + random() * COIN.intervalJitter;
+  }
+  // Enter / steal / exit (E).
+  if (actions & 16) {
+    if (hero.onFoot) {
+      const near = nearestParked(world);
+      if (near) enterCar(world, near);
+    } else {
+      exitCar(world);
     }
+  }
 
-    for (let index = 0; index < items.length; index += 1) {
-      const item = items[index];
-      if (!item.active) continue;
-      item.y += item.speed * dt;
-      if (item.y > FIELD.groundY) {
-        item.active = false;
-        if (item.kind === KIND_BLOCK && !harmless) state.score += BLOCK.dodgePoints;
-        continue;
+  if (hero.onFoot) {
+    const walk = input.walk();
+    const speed = walk.run ? 7 : 4;
+    hero.x += Math.sin(hero.heading) * walk.fwd * speed * dt + Math.cos(hero.heading) * walk.strafe * speed * dt;
+    hero.z -= Math.cos(hero.heading) * walk.fwd * speed * dt - Math.sin(hero.heading) * walk.strafe * speed * dt;
+    hero.leo.position.set(hero.x, 0, hero.z);
+    const u = hero.leo.userData;
+    const moving = walk.fwd !== 0 || walk.strafe !== 0;
+    if (moving) {
+      u.walkPhase += dt * speed * 1.6;
+      const swing = Math.sin(u.walkPhase) * 0.5;
+      u.legs[0].rotation.x = swing;
+      u.legs[1].rotation.x = -swing;
+      u.arms[0].rotation.x = -swing * 0.8;
+      u.arms[1].rotation.x = swing * 0.8;
+    }
+    hero.speed = moving ? speed : 0;
+  } else {
+    driveHero(hero, input.drive(), dt, state);
+    hero.mesh.position.set(hero.x, 0, hero.z);
+    hero.mesh.rotation.y = hero.heading;
+    // Mission 4 progress: driving west fast through the chase advances it.
+    if (state.missionIndex === 3 && Math.abs(hero.speed) > 12) {
+      if (advanceMission(state, dt * 0.02)) {
+        events.missionComplete = completeMission(state);
+        audio.chime();
       }
-      if (harmless || !overlaps(item, player)) continue;
-      if (item.kind === KIND_COIN) {
-        item.active = false;
-        state.score += COIN.points;
-        events |= EVENT_COIN;
-      } else if (player.invulnerable === 0) {
-        item.active = false;
-        state.lives -= 1;
-        player.invulnerable = PLAYER.invulnerable;
-        events |= EVENT_HIT;
-        if (state.lives === 0) {
-          events |= EVENT_OVER;
-          break;
-        }
-      }
     }
-    return events;
+    audio.engine(Math.abs(hero.speed) / 40);
   }
 
-  reset();
-  return { state, reset, step };
+  // Police, heli, pedestrians, traffic.
+  const active = unitsForWanted(state.wanted);
+  const res = updatePolice(world.units.slice(0, active), hero, dt, state);
+  if (res.rammed) {
+    events.rammed = true;
+    state.vehicle.condition = Math.max(0, state.vehicle.condition - res.damage);
+    shake(0.25, 0.25);
+    setHeat(state.heat / 100);
+  }
+  updateHeli(world.heli, hero, dt, world.time);
+  updatePedestrians(world.peds, dt);
+  for (const car of world.traffic) {
+    car.position.z -= 3 * dt;
+    if (car.position.z < -90) car.position.z = 30;
+  }
+  // Wanted bleed + return fire.
+  bleedHeat(state, dt, false);
+  const nearest = world.units.reduce((m, u) => Math.min(m, Math.hypot(u.car.position.x - hero.x, u.car.position.z - hero.z)), 99);
+  policeReturnFire(state, dt, nearest, Math.random);
+  // Dispatch line rotates every 12 s.
+  world.dispatchTimer += dt;
+  if (world.dispatchTimer > 12) {
+    world.dispatchTimer = 0;
+    world.dispatchLine = nextDispatchLine();
+    audio.blip();
+  }
+  followCamera(world, dt);
+  return events;
+}
+
+/** Reset the world to the staged chase state (deterministic, from the seed). */
+export function resetToStaged(world) {
+  const state = world.state;
+  Object.assign(state, createState());
+  world.hero.x = 0;
+  world.hero.z = 0;
+  world.hero.heading = 0;
+  world.hero.speed = 0;
+  world.hero.onFoot = false;
+  world.hero.mesh.visible = true;
+  world.hero.leo.visible = false;
+  world.hero.mesh.position.set(0, 0, 0);
+  world.hero.mesh.rotation.y = 0;
+  const spots = [
+    [-1.95, 0.4, 0], [1.95, 0.4, 0], [-3.2, -12, 0.12], [3.2, -12, -0.12], [0, -12, 0], [5.5, -6, 0.5],
+  ];
+  world.police.forEach((car, i) => {
+    car.position.set(spots[i][0], 0, spots[i][1]);
+    car.rotation.y = spots[i][2];
+  });
+  world.heli.group.position.set(2.5, 14, -8);
+  world.time = 0;
+  world.dispatchLine = 'All units, suspect is westbound on the boulevard. Air One has the light.';
 }
