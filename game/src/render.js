@@ -3,10 +3,13 @@
 import * as THREE from '../vendor/three/three.module.min.js';
 
 export function createRenderer(canvas) {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  const params = new URLSearchParams(window.location.search);
+  const antialias = params.get('aa') !== '0';
+  const shadows = params.get('shadow') !== '0';
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.enabled = shadows;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.33;

@@ -303,6 +303,7 @@ window.__world = {
   get world() { return world; },
   save() { return saveState(world.state); },
   stats() { return renderer.stats(); },
+  renderer,
 };
 
 if (shot) runShot(shot);
