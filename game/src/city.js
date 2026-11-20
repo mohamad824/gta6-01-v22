@@ -3,6 +3,7 @@
 // geometry is merged per material where it can be, and repeats are instanced.
 import * as THREE from '../vendor/three/three.module.min.js';
 import { range } from './random.js';
+import { mergeGeometries } from './merge.js';
 
 function canvasTexture(w, h, draw) {
   const canvas = document.createElement('canvas');
@@ -72,7 +73,7 @@ function makeInstanced(geo, mat, transforms) {
   return mesh;
 }
 
-/** A palm: segmented trunk + curved drooping fronds (one group, cloned by the city). */
+/** A palm: segmented trunk + curved drooping fronds (merged to one frond mesh). */
 export function makePalm(rng) {
   const palm = new THREE.Group();
   const trunkMat = new THREE.MeshStandardMaterial({ color: 0x7a5a3a, roughness: 0.9 });
@@ -81,17 +82,20 @@ export function makePalm(rng) {
   trunk.rotation.z = range(rng, -0.08, 0.08);
   trunk.castShadow = true;
   palm.add(trunk);
+  // All eight fronds share one material: merge them into a single mesh.
   const frondMat = new THREE.MeshStandardMaterial({ color: 0x4a8a3a, roughness: 0.85, side: THREE.DoubleSide });
+  const frondParts = [];
   for (let i = 0; i < 8; i += 1) {
     const frond = new THREE.Mesh(new THREE.ConeGeometry(0.28, 2.4, 4), frondMat);
     frond.scale.set(1, 1, 0.16);
     frond.position.y = 4.25;
     frond.rotation.z = Math.PI / 2 + range(rng, 0.5, 0.9);
     frond.rotation.y = (i / 8) * Math.PI * 2;
-    // Droop: tilt the frond down from the crown.
     frond.translateY(0.9);
-    palm.add(frond);
+    frond.updateMatrix();
+    frondParts.push({ geo: frond.geometry, matrix: frond.matrix.clone() });
   }
+  palm.add(new THREE.Mesh(mergeGeometries(frondParts), frondMat));
   const coconuts = new THREE.Mesh(
     new THREE.SphereGeometry(0.12, 8, 6),
     new THREE.MeshStandardMaterial({ color: 0x5a3a1a, roughness: 0.9 }),
