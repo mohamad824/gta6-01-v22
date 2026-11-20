@@ -18,7 +18,7 @@ import { muzzleFlash, setHeat, shake } from './effects.js';
 import { nextDispatchLine } from './dispatch.js';
 
 const CAMERAS = {
-  chase: { pos: [0, 3.1, 8.6], look: [0, 0.9, -10] },
+  chase: { pos: [0, 3.1, 8.6], look: [0, 1.4, -10] },
   onfoot: { pos: [1.6, 2.3, 7.5], look: [0, 1.1, -3] },
   title: { pos: [-6, 5.5, 16], look: [0, 1, -8] },
 };
@@ -77,7 +77,7 @@ export function createWorld(rng, seed) {
   ];
 
   const heli = buildHeli();
-  heli.group.position.set(2.5, 10.5, -5);
+  heli.group.position.set(2.5, 7.8, -6);
   scene.add(heli.group);
 
   const traffic = buildTraffic(rng, 10);
@@ -285,7 +285,7 @@ export function resetToStaged(world) {
     car.position.set(spots[i][0], 0, spots[i][1]);
     car.rotation.y = spots[i][2];
   });
-  world.heli.group.position.set(2.5, 10.5, -5);
+  world.heli.group.position.set(2.5, 7.8, -6);
   world.time = 0;
   world.dispatchLine = 'All units, suspect is westbound on the boulevard. Air One has the light.';
 }

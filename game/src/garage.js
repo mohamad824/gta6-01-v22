@@ -143,10 +143,12 @@ export function buildGarageScene(rng, state) {
   turntable.position.set(0, 0.06, 0);
   scene.add(turntable);
 
-  // The hero car, side-on, up on the lift (low enough that the wheels nearly
-  // touch the turntable — a floating car reads as a rendering bug).
+  // The hero car, side-on with a slight front three-quarter turn, up on the lift
+  // (low enough that the wheels nearly touch the turntable — a floating car
+  // reads as a rendering bug). Dead side-on reads flat; the turn shows the
+  // nose, the side and a hint of the top.
   const car = buildCar({ kind: 'sedan', color: state.vehicle.color });
-  car.rotation.y = Math.PI / 2; // length along X: side-on to the camera
+  car.rotation.y = Math.PI / 2 + 0.35; // length along X, nose turned to the camera
   car.position.set(0, 0.3, 0);
   scene.add(car);
 

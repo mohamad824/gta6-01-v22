@@ -113,7 +113,7 @@ export function buildHeli() {
 
 /** Hover above the hero, spin the rotor, keep the beam and pool on the road. */
 export function updateHeli(heli, hero, dt, time) {
-  heli.group.position.set(hero.x + 2.5, 10.5 + Math.sin(time * 0.7) * 0.4, hero.z - 5);
+  heli.group.position.set(hero.x + 2.5, 7.8 + Math.sin(time * 0.7) * 0.4, hero.z - 6);
   heli.group.rotation.y = Math.sin(time * 0.2) * 0.2;
   heli.rotor.rotation.y += dt * 22;
   // The pool stays on the road under the beam, following the hero.

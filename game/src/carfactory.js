@@ -6,7 +6,7 @@ import * as THREE from '../vendor/three/three.module.min.js';
 
 const PAINT = (color, metalness = 0.9, roughness = 0.3) => new THREE.MeshStandardMaterial({ color, metalness, roughness });
 const GLASS_MAT = new THREE.MeshStandardMaterial({
-  color: 0x111122, metalness: 0, roughness: 0.05, transparent: true, opacity: 0.72, envMapIntensity: 1.5,
+  color: 0x111122, metalness: 0, roughness: 0.05, transparent: true, opacity: 0.85, envMapIntensity: 0.6,
 });
 const CHROME = new THREE.MeshStandardMaterial({ color: 0xd8d8d8, metalness: 1, roughness: 0.08 });
 const RUBBER = new THREE.MeshStandardMaterial({ color: 0x141414, metalness: 0, roughness: 0.9 });
